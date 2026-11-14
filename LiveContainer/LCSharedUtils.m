@@ -21,8 +21,11 @@ NSString* FBSOpenApplicationOptionKeyPayloadURL = @"__PayloadURL";
         void* taskSelf = SecTaskCreateFromSelf(NULL);
         CFErrorRef error = NULL;
         CFTypeRef cfans = SecTaskCopyValueForEntitlement(taskSelf, CFSTR("com.apple.developer.team-identifier"), &error);
-        if(CFGetTypeID(cfans) == CFStringGetTypeID()) {
-            ans = (__bridge NSString*)cfans;
+        // The entitlement is missing when signed without a team (ad hoc, e.g. on a Mac).
+        if(cfans && CFGetTypeID(cfans) == CFStringGetTypeID()) {
+            ans = (__bridge_transfer NSString*)cfans;
+        } else if(cfans) {
+            CFRelease(cfans);
         }
         CFRelease(taskSelf);
 #endif
@@ -54,6 +57,12 @@ NSString* FBSOpenApplicationOptionKeyPayloadURL = @"__PayloadURL";
 }
 
 + (NSString *)appGroupID {
+#if TARGET_OS_MACCATALYST
+    // No AltStore/SideStore app group on a Mac, and probing for one would create folders in
+    // ~/Library/Group Containers for an unsandboxed app. Guests get per-library app groups
+    // from the NSFileManager hook instead.
+    return @"group.com.kdt.livecontainer.mac";
+#endif
     static dispatch_once_t once;
     static NSString *appGroupID = @"Unknown";
     dispatch_once(&once, ^{

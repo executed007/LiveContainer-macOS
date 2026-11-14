@@ -108,6 +108,9 @@ static void TweakLoaderConstructor() {
     }
     char substratePath[PATH_MAX];
     snprintf(substratePath, sizeof(substratePath), "%s/Frameworks/CydiaSubstrate.framework/CydiaSubstrate", lcMainBundlePath);
+#if TARGET_OS_MACCATALYST
+    snprintf(substratePath, sizeof(substratePath), "%s/CydiaSubstrate.framework/CydiaSubstrate", getenv("LC_FRAMEWORKS_PATH"));
+#endif
     dlopen(substratePath, RTLD_LAZY | RTLD_GLOBAL);
     const char *substrateError = dlerror();
     if (substrateError) {

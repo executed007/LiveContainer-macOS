@@ -29,8 +29,8 @@ void NSFMGuestHooksInit(void) {
     webKitHeader = getCachedSymbol(@"webKitHeader", dscPtr);
     
     if(!webKitHeader) {
-        dlopen("/System/Library/Frameworks/WebKit.framework/WebKit", RTLD_GLOBAL);
-        webKitHeader = LCGetLoadedImageHeader(0, "/System/Library/Frameworks/WebKit.framework/WebKit");
+        dlopen(LC_SYSTEM_FRAMEWORK("WebKit"), RTLD_GLOBAL);
+        webKitHeader = LCGetLoadedImageHeader(0, LC_SYSTEM_FRAMEWORK("WebKit"));
         saveCachedSymbol(@"webKitHeader", dscPtr, webKitHeader-dscPtr);
     }
     
@@ -42,7 +42,7 @@ void NSFMGuestHooksInit(void) {
 @implementation NSFileManager(LiveContainerHooks)
 
 - (nullable NSURL *)hook_containerURLForSecurityApplicationGroupIdentifier:(NSString *)groupIdentifier {
-    if([groupIdentifier isEqualToString:[NSClassFromString(@"LCSharedUtils") appGroupID]]) {
+    if(NSUserDefaults.lcAppGroupPath && [groupIdentifier isEqualToString:[NSClassFromString(@"LCSharedUtils") appGroupID]]) {
         return [NSURL fileURLWithPath: NSUserDefaults.lcAppGroupPath];
     }
     NSURL *result;

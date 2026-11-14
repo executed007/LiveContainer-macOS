@@ -36,9 +36,13 @@
 + (NSXPCInterface *)_extensionAuxiliaryVendorProtocol;
 @end
 
+#if !TARGET_OS_MACCATALYST
 void* SecTaskCreateFromSelf(CFAllocatorRef allocator);
 NSString *SecTaskCopyTeamIdentifier(void *task, NSError **error);
 CFTypeRef SecTaskCopyValueForEntitlement(void *task, CFStringRef key, CFErrorRef *error);
+#else
+#include <Security/SecTask.h>
+#endif
 
 
 @interface _CFXPreferences2 : NSObject

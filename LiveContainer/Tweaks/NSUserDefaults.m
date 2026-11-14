@@ -51,10 +51,21 @@ void NUDGuestHooksInit(void) {
     [sources removeObjectForKey:@"C/C//*/L"];
     
     // replace _CFPrefsCurrentAppIdentifierCache so kCFPreferencesCurrentApplication refers to the guest app
-    const char* coreFoundationPath = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation";
+    const char* coreFoundationPath = LC_SYSTEM_FRAMEWORK("CoreFoundation");
+    #if TARGET_OS_MACCATALYST
+    // The macOS launcher links CoreFoundation directly, so it is among the first images.
+    mach_header_u* coreFoundationHeader = LCGetLoadedImageHeader(0, coreFoundationPath);
+#else
     mach_header_u* coreFoundationHeader = LCGetLoadedImageHeader(2, coreFoundationPath);
+#endif
     
-#if !TARGET_OS_SIMULATOR
+#if TARGET_OS_MACCATALYST
+    // macOS ships no shared cache .symbols file, so this private variable cannot be found.
+    // It does not need to be: CoreFoundation fills it on first use, and LiveContainerMacMain
+    // leaves preferences untouched until the guest's bundle is in place, so it is computed
+    // from the guest's bundle identifier.
+    (void)coreFoundationHeader;
+#elif !TARGET_OS_SIMULATOR
     CFStringRef* _CFPrefsCurrentAppIdentifierCache = getCachedSymbol(@"__CFPrefsCurrentAppIdentifierCache", coreFoundationHeader);
     if(!_CFPrefsCurrentAppIdentifierCache) {
         _CFPrefsCurrentAppIdentifierCache = litehook_find_dsc_symbol(coreFoundationPath, "__CFPrefsCurrentAppIdentifierCache");
@@ -71,7 +82,15 @@ void NUDGuestHooksInit(void) {
     [newStandardUserDefaults _setIdentifier:NSUserDefaults.lcGuestAppId];
     NSUserDefaults.standardUserDefaults = newStandardUserDefaults;
 
-#if !TARGET_OS_SIMULATOR
+#if TARGET_OS_MACCATALYST
+    // Same reason as above: setting AppleLanguages before the guest starts is enough.
+    NSString* selectedLanguage = NSUserDefaults.guestAppInfo[@"LCSelectedLanguage"];
+    if(selectedLanguage) {
+        [newStandardUserDefaults setObject:@[selectedLanguage] forKey:@"AppleLanguages"];
+    } else {
+        [newStandardUserDefaults removeObjectForKey:@"AppleLanguages"];
+    }
+#elif !TARGET_OS_SIMULATOR
     NSString* selectedLanguage = NSUserDefaults.guestAppInfo[@"LCSelectedLanguage"];
     if(selectedLanguage) {
         [newStandardUserDefaults setObject:@[selectedLanguage] forKey:@"AppleLanguages"];

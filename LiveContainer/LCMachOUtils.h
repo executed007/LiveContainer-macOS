@@ -1,6 +1,13 @@
 @import Foundation;
 @import MachO;
 
+// Path of a system framework binary. macOS (and so Mac Catalyst) keeps it under Versions/A.
+#if TARGET_OS_MACCATALYST
+#define LC_SYSTEM_FRAMEWORK(name) "/System/Library/Frameworks/" name ".framework/Versions/A/" name
+#else
+#define LC_SYSTEM_FRAMEWORK(name) "/System/Library/Frameworks/" name ".framework/" name
+#endif
+
 typedef void (^LCParseMachOCallback)(const char *path, struct mach_header_64 *header, int fd, void* filePtr);
 
 #define PATCH_EXEC_RESULT_NO_SPACE_FOR_TWEAKLOADER 1

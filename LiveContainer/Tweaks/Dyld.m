@@ -334,19 +334,59 @@ bool initGuestSDKVersionInfo(void) {
 }
 
 #if TARGET_OS_MACCATALYST || TARGET_OS_SIMULATOR
-void DyldHookLoadableIntoProcess(void) {
+#if TARGET_OS_MACCATALYST
+// dyld runs from the shared cache on current macOS, so its private symbols are not in memory.
+// Read them from /usr/lib/dyld on disk instead. macOS 26 renamed mach_o::Header to
+// mach_o::UnsafeHeader for this function, so try both.
+static uint32_t *LCMacFindLoadableIntoProcess(void) {
+    static const char *names[] = {
+        "__ZNK6mach_o12UnsafeHeader19loadableIntoProcessENS_8PlatformE7CStringb",
+        "__ZNK6mach_o6Header19loadableIntoProcessENS_8PlatformE7CStringb",
+    };
+    for (size_t i = 0; i < sizeof(names) / sizeof(*names); i++) {
+        __block uint64_t offset = 0;
+        LCParseMachO("/usr/lib/dyld", true, ^(const char *path, struct mach_header_64 *header, int fd, void *filePtr) {
+            if (header->cputype != CPU_TYPE_ARM64 || offset) return;
+            void *result = litehook_find_symbol_file(header, names[i]);
+            if (result) offset = (uint64_t)result - (uint64_t)header;
+        });
+        if (offset) return (uint32_t *)((uint8_t *)getDyldBase() + offset);
+    }
+    return NULL;
+}
+#endif
+
+// Lets dyld load binaries built for another platform (an iOS binary in a Mac Catalyst
+// process). Returns false when the patch could not be applied.
+bool DyldHookLoadableIntoProcess(void) {
+    static int state = 0; // 0 = not tried, 1 = applied, -1 = failed
+    if (state) return state > 0;
+#if TARGET_OS_MACCATALYST
+    uint32_t *patchAddr = LCMacFindLoadableIntoProcess();
+#else
     uint32_t *patchAddr = (uint32_t *)litehook_find_symbol(getDyldBase(), "__ZNK6mach_o6Header19loadableIntoProcessENS_8PlatformE7CStringb");
+#endif
     size_t patchSize = sizeof(uint32_t[2]);
+    state = -1;
+    if (!patchAddr) {
+        NSLog(@"[LC] dyld platform check not found; only Mac Catalyst binaries can be loaded");
+        return false;
+    }
 
     kern_return_t kret;
     kret = builtin_vm_protect(mach_task_self(), (vm_address_t)patchAddr, patchSize, false, PROT_READ | PROT_WRITE | VM_PROT_COPY);
-    assert(kret == KERN_SUCCESS);
+    if (kret != KERN_SUCCESS) {
+        NSLog(@"[LC] cannot patch dyld platform check (%d); only Mac Catalyst binaries can be loaded", kret);
+        return false;
+    }
 
     patchAddr[0] = 0xD2800020; // mov x0, #1
     patchAddr[1] = 0xD65F03C0; // ret
 
     kret = builtin_vm_protect(mach_task_self(), (vm_address_t)patchAddr, patchSize, false, PROT_READ | PROT_EXEC);
     assert(kret == KERN_SUCCESS);
+    state = 1;
+    return true;
 }
 #endif
 
@@ -394,7 +434,7 @@ void DyldHooksInit(bool hideLiveContainer, bool hookDlopen, uint32_t spoofSDKVer
         litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, dlopen, jitless_hook_dlopen, nil);
     }
     
-#if TARGET_OS_MACCATALYST || TARGET_OS_SIMULATOR
+#if TARGET_OS_SIMULATOR
     DyldHookLoadableIntoProcess();
 #endif
 }
@@ -457,6 +497,12 @@ int searchVtable(void** vtable, void *func) {
 }
 
 void *dlopen_nolock(const char *path, int mode) {
+#if TARGET_OS_MACCATALYST
+    // The lock hooks below need private symbols from the shared cache's .symbols file, which
+    // macOS does not ship. A plain dlopen has not deadlocked on macOS in testing; if a guest
+    // ever shows a blank window at launch, this is the place to look.
+    return hookedDlopen ? jitless_hook_dlopen(path, mode) : dlopen(path, mode);
+#endif
     tidToIgnore = mach_thread_self();
     const char *libdyldPath = "/usr/lib/system/libdyld.dylib";
     mach_header_u *libdyldHeader = LCGetLoadedImageHeader(0, libdyldPath);

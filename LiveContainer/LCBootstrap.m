@@ -16,6 +16,9 @@
 #include <stdlib.h>
 #include "../litehook/src/litehook.h"
 #import "Tweaks/Tweaks.h"
+#if TARGET_OS_MACCATALYST
+void LCMacKeychainInit(NSString *containerPath);
+#endif
 #include <mach-o/ldsyms.h>
 
 extern char **environ;
@@ -321,6 +324,8 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     if([[lcUserDefaults objectForKey:@"LCWaitForDebugger"] boolValue]) {
         sleep(100);
     }
+#if !TARGET_OS_MACCATALYST
+    // A Mac runs ad hoc signed code natively: there is no JIT or JIT-less mode to set up.
     if (!LCSharedUtils.certificatePassword && !isSideStore) {
 #if !TARGET_OS_SIMULATOR
         if(@available(iOS 26.0 ,*))  {
@@ -336,6 +341,7 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
             return appError;
         }
     }
+#endif
 
     NSFileManager *fm = NSFileManager.defaultManager;
     NSString *docPath = [NSString stringWithFormat:@"%s/Documents", getenv("LC_HOME_PATH")];
@@ -429,6 +435,9 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
             bundlePath = bundlePath.stringByDeletingLastPathComponent.stringByDeletingLastPathComponent;
         }
         NSString *target = [bundlePath stringByAppendingPathComponent:@"Frameworks/TweakLoader.dylib"];
+#if TARGET_OS_MACCATALYST
+        target = [@(getenv("LC_FRAMEWORKS_PATH")) stringByAppendingPathComponent:@"TweakLoader.dylib"];
+#endif
         symlink(target.UTF8String, tweakLoaderPath.UTF8String);
     }
 
@@ -502,9 +511,12 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     }
     
     
+#if !TARGET_OS_MACCATALYST
+    // On a Mac, TMPDIR already is the container's own tmp folder (see LCMacBootstrap).
     NSString *newTmpPath = [newHomePath stringByAppendingPathComponent:@"tmp"];
     remove(newTmpPath.UTF8String);
     symlink(getenv("TMPDIR"), newTmpPath.UTF8String);
+#endif
     
     if([guestAppInfo[@"doSymlinkInbox"] boolValue]) {
         NSString* inboxSymlinkPath = [NSString stringWithFormat:@"%s/%@-Inbox", getenv("TMPDIR"), [appBundle bundleIdentifier]];
@@ -552,7 +564,9 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     NSString* containerInfoPath = [newHomePath stringByAppendingPathComponent:@"LCContainerInfo.plist"];
     guestContainerInfo = [NSDictionary dictionaryWithContentsOfFile:containerInfoPath];
     
+#if !TARGET_OS_MACCATALYST
     [LCSharedUtils setContainerUsingByLC:lcAppUrlScheme folderName:dataUUID auditToken:0];
+#endif
 
     // Overwrite NSBundle
     overwriteMainNSBundle(appBundle);
@@ -583,7 +597,11 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
         NSExtensionGuestHooksInit(appBundle.bundleURL, [NSURL fileURLWithPath:newHomePath isDirectory:YES]);
     }
     if(!isSideStore) {
+#if TARGET_OS_MACCATALYST
+        LCMacKeychainInit(newHomePath);
+#else
         SecItemGuestHooksInit();
+#endif
         NSFMGuestHooksInit();
         initDead10ccFix();
     }
@@ -936,7 +954,7 @@ int LiveContainerMain(int argc, char *argv[]) {
         }
         setenv("LC_GLOBAL_TWEAKS_FOLDER", tweakFolder.UTF8String, 1);
 #if TARGET_OS_MACCATALYST || TARGET_OS_SIMULATOR
-        extern void DyldHookLoadableIntoProcess(void);
+        extern bool DyldHookLoadableIntoProcess(void);
         DyldHookLoadableIntoProcess();
 #endif
         dlopen("@executable_path/Frameworks/TweakLoader.dylib", RTLD_LAZY);
@@ -952,4 +970,8 @@ int callAppMain(int argc, char *argv[], char *envp[]) {
     assert(appMain != NULL);
     __attribute__((musttail)) return appMain(argc, argv, envp);
 }
+#endif
+
+#if TARGET_OS_MACCATALYST
+#include "../macOS/Runtime/LCMacBootstrap.inc.m"
 #endif
