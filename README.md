@@ -1,217 +1,145 @@
 <div align="center">
-   <img width="217" height="217" src="./screenshots/livecontainer_icon.png" alt="Logo">
+  <img src="macOS/docs/icon.png" width="128" height="128" alt="LiveContainer icon">
+  <h1>LiveContainer for Mac</h1>
+  <p><b>Run iOS apps natively on Apple silicon Macs.</b><br>
+  One library, as many separate data containers per app as you like, and every app in its own Mac window.</p>
+
+  <p>
+    <img src="https://img.shields.io/badge/macOS-14%2B-black?logo=apple" alt="macOS 14 or later">
+    <img src="https://img.shields.io/badge/Apple%20silicon-required-blue" alt="Apple silicon">
+    <img src="https://img.shields.io/badge/license-AGPL--3.0-green" alt="AGPL-3.0">
+    <a href="https://github.com/LiveContainer/LiveContainer"><img src="https://img.shields.io/badge/based%20on-LiveContainer-purple" alt="Based on LiveContainer"></a>
+  </p>
 </div>
-   
 
-<div align="center">
-  <h1><b>LiveContainer</b></h1>
-  <p><i>An app launcher that runs iOS apps without actually installing them! </i></p>
-</div>
-<h6 align="center">
+<p align="center"><img src="macOS/docs/library.jpg" width="820" alt="The LiveContainer library window"></p>
 
-Crowdin Project: [![Crowdin](https://badges.crowdin.net/livecontainer/localized.svg)](https://crowdin.com/project/livecontainer) &nbsp;| &nbsp; Documentation:[livecontainer.github.io](https://livecontainer.github.io/docs/intro)
+A Mac port of [LiveContainer](https://github.com/LiveContainer/LiveContainer), the iOS app launcher that runs apps without
+installing them. Apple silicon Macs run iPhone code natively and macOS already ships the iOS frameworks, so there is no
+emulation and no virtual machine: apps run at full speed.
 
-# LiveContainer
+> You bring your own **decrypted** `.ipa`. App Store downloads are FairPlay-encrypted and are refused.
+> This project contains no apps and does not explain how to obtain them.
 
-> [!NOTE]
-> **macOS fork:** this branch adds LiveContainer for Mac in [`macOS/`](macOS/README.md). It runs iOS apps
-> natively on Apple silicon, with containers, tweaks, and every app in its own Mac window. Build it with
-> `macOS/build.sh`.
+## Features
 
-
-- LiveContainer is an app launcher (not emulator or hypervisor) that allows you to run iOS apps inside it.
-- Allows you to install unlimited apps (3 app/10 app id free developer account limit does not apply here) with only one app & app id. You can also have multiple versions of an app installed with multiple data containers.
-- (Below iOS 26) When JIT is available, codesign is entirely bypassed, no need to sign your apps before installing. Otherwise, your app will be signed with the same certificate used by LiveContainer.
-
-> [!CAUTION]
-> **Important Notice Regarding Third-Party Builds of LiveContainer**
->
-> We have recently noticed the appearance of certain closed-source third-party builds of LiveContainer. Please be aware that all your apps are installed within LiveContainer, which means these third-party builds **have full access to your data, including sensitive information such as keychain items and login credentials**. 
-> 
-> Furthermore, please note that we do not provide any support for issues of these third-party builds.
-
-
-# Installation
-**LiveContainer comes with a standalone version and a version with built-in SideStore. [Please read the install guide here](https://livecontainer.github.io/docs/installation)**
-
-If you encounter any issue please [read our FAQ here](https://livecontainer.github.io/docs/faq)
-
-### Standalone 
 <table>
 <tr>
-<td>
-Stable
+<td width="50%" valign="top">
+
+### 📦 Containers
+Every app can have several data containers, each with its own logins, keychain, preferences and files: work and
+personal accounts, or a clean profile for testing. Open them **side by side**, each in its own window.
+
+### 🪟 Real Mac apps
+Each app gets its own process, Dock icon and menu bar name. *Add to Applications* puts it in Launchpad and Spotlight.
+Links and sign-in callbacks for the app's URL schemes open the right app.
+
+### ⚡️ Fast installs and painless updates
+Binaries are converted and signed in parallel, and copies are APFS clones: a 520 MB app installs in about 8 seconds.
+Updating keeps containers, keychain and settings, and doesn't trigger new permission prompts.
+
 </td>
-<td>
-<a href="https://stikstore.app/altdirect/?url=https://github.com/LiveContainer/LiveContainer/releases/download/1.0/apps.json&exclude=livecontainer" target="_blank">
-   <img src="https://raw.githubusercontent.com/StikStore/altdirect/refs/heads/main/assets/png/AltSource_Blue.png" alt="Add AltSource" width="200"/>
-</a>
-</td>
-<td>
-<a href="https://github.com/LiveContainer/LiveContainer/releases/latest/download/LiveContainer.ipa" target="_blank">
-   <img src="https://raw.githubusercontent.com/StikStore/altdirect/refs/heads/main/assets/png/Download_Blue.png" alt="Download .ipa" width="200"/>
-</a>
-</td>
-</tr>
-<tr>
-<td>
-Nightly
-</td>
-<td>
-<a href="https://stikstore.app/altdirect/?url=https://github.com/LiveContainer/LiveContainer/releases/download/nightly/apps_nightly.json&exclude=livecontainer" target="_blank">
-   <img src="https://raw.githubusercontent.com/StikStore/altdirect/refs/heads/main/assets/png/AltSource_Blue.png" alt="Add AltSource" width="200"/>
-</a>
-</td>
-<td>
-<a href="https://github.com/LiveContainer/LiveContainer/releases/download/nightly/LiveContainer.ipa" target="_blank">
-   <img src="https://raw.githubusercontent.com/StikStore/altdirect/refs/heads/main/assets/png/Download_Blue.png" alt="Download .ipa" width="200"/>
-</a>
+<td width="50%" valign="top">
+
+### 🧩 Tweaks
+LiveContainer's TweakLoader with CydiaSubstrate. Global tweaks load into every app, and tweak sets load into the apps
+that choose them. iOS tweaks are converted when you add them.
+
+### 🎛 Per-app settings
+Window size and full-height layout, a volume control for each app, arrow keys through swipe feeds, and a portrait
+camera image that stays upright. From LiveContainer: hide LiveContainer from the app, report another iOS SDK version,
+run in another language, and give each container its own identifierForVendor.
+
+### ⌨️ Scriptable
+Everything the app does is also available from `lcmac`, the command-line tool.
+
 </td>
 </tr>
 </table>
 
-### LiveContainer+SideStore
-|Stable|Nightly|
-|:-:|:-:|
-|<a href="https://github.com/LiveContainer/LiveContainer/releases/latest/download/LiveContainer+SideStore.ipa" target="_blank"><img src="https://raw.githubusercontent.com/StikStore/altdirect/refs/heads/main/assets/png/Download_Blue.png" alt="Download .ipa" width="200" /></a>|<a href="https://github.com/LiveContainer/LiveContainer/releases/download/nightly/LiveContainer+SideStore.ipa" target="_blank"><img src="https://raw.githubusercontent.com/StikStore/altdirect/refs/heads/main/assets/png/Download_Blue.png" alt="Download .ipa" width="200" /></a>|
+<p align="center">
+  <img src="macOS/docs/detail.jpg" width="49%" alt="An app's page with its containers and settings">
+  <img src="macOS/docs/tweaks.jpg" width="49%" alt="The Tweaks page">
+</p>
 
+## Install
 
-## Requirements
+**Requirements:** a Mac with Apple silicon (M1 or later) and macOS 14 or later.
 
-- iOS/iPadOS 15+
-   + Multitasking requires iOS/iPadOS 16.0+
-- AltStore 2.0+ / SideStore 0.6.0+
+### Download
 
+1. Download `LiveContainer-macOS.zip` from [Releases](../../releases/latest) and unzip it.
+2. Move **LiveContainer** to your Applications folder.
+3. The app is signed ad hoc, not with an Apple Developer ID. The first time, right-click it and choose **Open**, or run:
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/LiveContainer.app
+   ```
 
-# Features & Guides
+### Build from source
 
-### Installing Apps
-- Open LiveContainer, tap the plus icon in the upper right hand corner and select IPA files to install.
-- Choose the app you want to open in the next launch.
-- You can long-press the app to manage it.
+You only need the Xcode Command Line Tools (`xcode-select --install`); no Xcode project is involved.
 
-### [Add Apps to Home Screen](https://livecontainer.github.io/docs/guides/add-to-home-screen)
+```bash
+git clone https://github.com/executed007/LiveContainer-macOS.git
+cd LiveContainer-macOS
+macOS/build.sh                       # builds and runs the unit tests
+cp -R macOS/build/LiveContainer.app /Applications/
+```
 
-### [Multiple LiveContainers](https://livecontainer.github.io/docs/guides/multiple-livecontainers)
-Using multiple LiveContainers allows you to run multiples different apps simultaneously, with *almost* seamless data transfer between the LiveContainers.
+## Use
 
-### [Multitasking](https://livecontainer.github.io/docs/guides/multitask)
-You can now launch multiple apps simultaneously in in-app virtual windows. These windows can be resized, scaled, and even displayed using the native Picture-in-Picture (PiP) feature. On iPads, apps can run in native window mode, displaying each app in a separate system window. And if you wish, you can choose to run apps in multitasking mode by default in settings.
+Drop an `.ipa` on the window, or click **+**. The app installs in a few seconds and opens.
 
-To use multitasking, hold its banner and tap **"Multitask"**. You can also make Multitask the default launch mode in settings.
+- Click an app to see its page. Double-click it, or use the ▶︎ button, to open it.
+- On an app's page, **Add Container** creates a fresh, empty copy of its data. Open any container from its card.
+- Drop `.dylib` or `.framework` files on the window to add tweaks, then manage them on the **Tweaks** page.
 
->[!Note]
->1. To use multitasking, ensure you select **"Keep App Extensions"** when installing via SideStore/AltStore.  
->2. If you want to enable JIT for multitasked apps, you’ll need a JIT enabler that supports attaching by PID. (StikDebug)
+From the command line (`LiveContainer.app/Contents/MacOS/lcmac`):
 
-### [JIT Support](https://livecontainer.github.io/docs/guides/jit-support)
-### [Installing external tweaks](https://livecontainer.github.io/docs/guides/tweaks)
-### [Multiple Containers/External Containers](https://livecontainer.github.io/docs/guides/containers-and-external-data)
-### [Hiding Apps](https://livecontainer.github.io/docs/guides/lock-app)
+```bash
+lcmac install App.ipa --run
+lcmac container add App Work
+lcmac run App --container Work      # alongside the default container
+lcmac mac App windowSize phone
+lcmac set App spoofSDKVersion 17.0
+lcmac tweak add MyTweak.dylib
+lcmac export App                    # put it in ~/Applications
+lcmac help
+```
 
-### Fix File Picker & Local Notification
-Some apps may experience issues with their file pickers or not be able to apply for notification permission in LiveContainer. To resolve this, enable "Fix File Picker" & "Fix Local Notifications" accordingly in the app-specific settings.
+## How it works
 
-### "Open In App" Support
-- You can simply share a URL or a file to app simply by using iOS's native share sheet. In share sheet, select LiveContainer, and LiveContainer will ask you which app you'd like to open that URL/file in.
-- What's more, you also can tap the link icon in the top-right corner of the "Apps" tab and input the URL. LiveContainer will detect the appropriate app and ask if you want to launch it.
+LiveContainer for Mac runs **LiveContainer's own runtime**, compiled for Mac Catalyst, with a small set of Mac-specific changes:
 
-## Compatibility
-Unfortunately, not all apps work in LiveContainer, so we have a [compatibility list](https://github.com/LiveContainer/LiveContainer/labels/compatibility) to tell if there is apps that have issues. If they aren't on this list, then it's likely going run. However, if it doesn't work, please make an [issue](https://github.com/LiveContainer/LiveContainer/issues/new/choose) about it.
+1. **Install:** every binary is thinned to arm64 and retargeted to Mac Catalyst (the approach PlayCover uses). The app's
+   executable then gets LiveContainer's patch: it becomes a library the runtime can load, with TweakLoader injected.
+2. **Launch:** each app has a tiny launcher app with its name, icon and URL schemes. The launcher loads LiveContainer's
+   runtime, which points the app's home folder, preferences, keychain and app groups at the chosen container, swaps
+   in the app's bundle, and jumps to its `main()`.
+3. **Run:** the app is a normal Mac Catalyst process, with Mac window, volume, keyboard and camera adaptations.
 
-## Building
-Open Xcode, edit `DEVELOPMENT_TEAM[config=Debug]` in `xcconfigs/Global.xcconfig` to your team id and compile.
+The full write-up covers the upstream changes, the tests and the limits: **[macOS/README.md](macOS/README.md)**.
 
-## Project structure
-### Main executable
-- Core of LiveContainer
-- Contains the logic of setting up guest environment and loading guest app.
-- If no app is selected, it loads LiveContainerSwiftUI.
+## Limits
 
-### LiveContainerSwiftUI
-- SwiftUI rewrite of LiveContainerUI (by @hugeBlack)
-- Language file `Localizable.xcstrings` is in here for multilingual support. To help us translate LiveContainer, please visit [our crowdin project](https://crowdin.com/project/livecontainer)
-
-### MultitaskSupport
-- Contains the implementation of multitasking feature.
-- Based on [FrontBoardAppLauncher](https://github.com/khanhduytran0/FrontBoardAppLauncher)
-
-### SideStore
-- Supporting code for SideStore's app refreshing integration
-
-### TweakLoader
-- A simple tweak injector, which loads CydiaSubstrate and loads tweaks.
-- Injected to every app you install in LiveContainer.
-
-### ZSign
-- The app signer shipped with LiveContainer.
-- Originally made by [zhlynn](https://github.com/zhlynn/zsign).
-- LiveContainer uses [Feather's](https://github.com/khcrysalis/Feather) version of ZSign modified by khcrysalis.
-- Changes are made to meet LiveContainer's needs.
-
-## How does it work?
-
-### Patching guest executable
-- Patch `__PAGEZERO` segment:
-  + Change `vmaddr` to `0xFFFFC000` (`0x100000000 - 0x4000`)
-  + Change `vmsize` to `0x4000`
-- Change `MH_EXECUTE` to `MH_DYLIB`.
-- Inject a load command to load `TweakLoader.dylib`
-
-### Patching `@executable_path`
-- Hook `dyld4::APIs::_NSGetExecutablePath`
-- Call `_NSGetExecutablePath`
-- Replace `config.process.mainExecutablePath`
-  - Calculate address of `config.process.mainExecutablePath` using `dyld4::APIs` instance (passed as first parameter)
-  - Use `builtin_vm_protect` or TPRO unlock to make it writable
-  - Replace the address with one we have control of
-- Put the original `dyld4::APIs::_NSGetExecutablePath` back
-
-> Old Method
->- Call `_NSGetExecutablePath` with an invalid buffer pointer input -> SIGSEGV
->- Do some [magic stuff](https://github.com/khanhduytran0/LiveContainer/blob/5ef1e6a/main.m#L74-L115) to overwrite the contents of executable_path.
-
-### Patching `NSBundle.mainBundle`
-- This property is overwritten with the guest app's bundle.
-
-### Bypassing Library Validation
-- JIT is optional to bypass codesigning. In JIT-less mode, all executables are signed so this does not apply.
-- Derived from [Restoring Dyld Memory Loading](https://blog.xpnsec.com/restoring-dyld-memory-loading)
-
-### dlopening the executable
-- Call `dlopen` with the guest app's executable
-- TweakLoader loads all tweaks in the selected folder
-- Find the entry point
-- Jump to the entry point
-- The guest app's entry point calls `UIApplicationMain` and start up like any other iOS apps.
-
-### Multi-Account support & Keychain Semi-Separation
-[128 keychain access groups](./entitlements.xml) are created and LiveContainer allocates them randomly to each container of the same app. So you can create 128 container with different keychain access groups.
-
-## Limitations
-- Entitlements from the guest app are not applied to the host app. This isn't a big deal since sideloaded apps requires only basic entitlements.
-- App Permissions are globally applied.
-- Guest app containers are not sandboxed. This means one guest app can access other guest apps' data.
-- App extensions aren't supported. they cannot be registered because: LiveContainer is sandboxed, SpringBoard doesn't know what apps are installed in LiveContainer, and they take up App ID.
-- Multitasking can be achieved by using multiple LiveContainer and the multitasking feature. However, while we were able to fix physical keyboard input issue on iPadOS (https://github.com/LiveContainer/LiveContainer/issues/524), iPhone Mirroring uses different checks which still broke it (https://github.com/LiveContainer/LiveContainer/issues/793).
-- Remote push notification will not work
-- Querying custom URL schemes might not work(?)
-
-## TODO
-- Use ChOma instead of custom MachO parser
-
-## License
-[GNU Affero General Public License v3.0](https://github.com/LiveContainer/LiveContainer/blob/main/LICENSE)
+- Apple silicon only, and decrypted apps only.
+- App extensions (widgets, share extensions) and remote push notifications are not available.
+- Apps that need iOS frameworks macOS does not ship for Catalyst will not launch.
+- Apps are not sandboxed from each other, as in upstream LiveContainer.
 
 ## Credits
-- [xpn's blogpost: Restoring Dyld Memory Loading](https://blog.xpnsec.com/restoring-dyld-memory-loading)
-- [LinusHenze's CFastFind](https://github.com/pinauten/PatchfinderUtils/blob/master/Sources/CFastFind/CFastFind.c): [MIT license](https://github.com/pinauten/PatchfinderUtils/blob/master/LICENSE)
-- [litehook](https://github.com/opa334/litehook): [MIT license](https://github.com/opa334/litehook/blob/main/LICENSE)
-- @haxi0 & @m1337v for icon
-- @Vishram1123 for the initial shortcut implementation.
-- @hugeBlack for SwiftUI contribution
-- @Staubgeborener for automatic AltStore/SideStore source updater
-- @fkunn1326 for improved app hiding
-- @slds1 for dynamic color feature
-- @Vishram1123 for iOS 26+ JIT Script Support
-- @StephenDev0 for AltStore source support
+
+- **[LiveContainer](https://github.com/LiveContainer/LiveContainer)** by Duy Tran (khanhduytran0), hugeBlack and
+  contributors: the runtime this fork is built on. The iOS project's README is kept as
+  [README.upstream.md](README.upstream.md).
+- **[PlayCover](https://github.com/PlayCover/PlayCover)**: the Mac Catalyst conversion method.
+- **[Catalyst Runner](https://github.com/executed007/TikTokOnMac)**: Mac window, volume, keyboard and camera adaptations.
+- [litehook](https://github.com/opa334/litehook) by opa334, and CydiaSubstrate as bundled by LiveContainer.
+
+## License
+
+[GNU Affero General Public License v3.0](LICENSE), as upstream LiveContainer.
+
+LiveContainer for Mac is not affiliated with Apple or with the developers of any app you run in it. Apps you install
+are for your own use on your own Mac.
