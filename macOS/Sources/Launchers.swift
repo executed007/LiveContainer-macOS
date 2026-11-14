@@ -99,6 +99,12 @@ struct Launchers {
            fm.fileExists(atPath: icon.path) {
             return
         }
+        // Never swap the bundle of an app that is running: it reads its own Info.plist and
+        // resources while it runs. A working old launcher is fine until the app quits; the
+        // next launch refreshes it.
+        if app.isRunning, let old = LCPlist.read(infoURL)["LCMacRuntime"] as? String, fm.fileExists(atPath: old) {
+            return
+        }
 
         // Build next to the old launcher and swap it in, so it is never missing while in use.
         let staged = launcher.deletingLastPathComponent().appendingPathComponent(".\(launcher.lastPathComponent).\(UUID().uuidString)")

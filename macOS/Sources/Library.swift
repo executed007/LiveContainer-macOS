@@ -96,6 +96,7 @@ struct LCApp: Identifiable, Hashable {
         guard let build = info["CFBundleVersion"] as? String, build != short else { return short }
         return "\(short) (\(build))"
     }
+    var shortVersion: String { info["CFBundleShortVersionString"] as? String ?? version }
     var icon: URL? {
         let icns = paths.launchers.appendingPathComponent(folderName).appendingPathComponent("Contents/Resources/AppIcon.icns")
         return FileManager.default.fileExists(atPath: icns.path) ? icns : nil

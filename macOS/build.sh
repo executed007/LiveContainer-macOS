@@ -82,7 +82,7 @@ swiftc -O -target "$MACOS" macOS/Sources/MacIcon.swift macOS/App/IconTool/main.s
 cp -R "$OUT/LiveContainerMac.dylib" "$OUT/TweakLoader.dylib" "$OUT/LCLauncher" "$OUT/CydiaSubstrate.framework" "$APPDIR/Contents/Frameworks/"
 cp "$OUT/lcmac" "$APPDIR/Contents/MacOS/lcmac"
 # shellcheck disable=SC2086
-swiftc -O -parse-as-library -target "$MACOS" $SWIFT_SOURCES macOS/App/App.swift -o "$APPDIR/Contents/MacOS/LiveContainer"
+swiftc -O -parse-as-library -target "$MACOS" $SWIFT_SOURCES macOS/App/*.swift -o "$APPDIR/Contents/MacOS/LiveContainer"
 codesign --force --sign - "$APPDIR/Contents/MacOS/lcmac"
 codesign --force --sign - "$APPDIR"
 echo "Built $APPDIR"
