@@ -210,6 +210,79 @@ do {
     check(app.settings.volume == 0.4, "Mac settings saved")
 } catch { check(false, "library model threw \(error)") }
 
+// MARK: - Backup, restore, caches
+
+do {
+    let home = FileManager.default.temporaryDirectory.appendingPathComponent("lcmac-backup-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: home) }
+    let library = LCLibrary(paths: LCPaths(home: home))
+    try library.paths.createFolders()
+    func makeApp(_ id: String) throws -> LCApp {
+        let url = library.paths.applications.appendingPathComponent("\(id).app")
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        try LCPlist.write(["CFBundleIdentifier": id], to: url.appendingPathComponent("Info.plist"))
+        try LCPlist.write([:], to: url.appendingPathComponent("LCAppInfo.plist"))
+        return LCApp(url: url, paths: library.paths)
+    }
+    let app = try makeApp("com.example.one"), other = try makeApp("com.example.two")
+    let source = try library.addContainer(to: app, name: "Main")
+    try Data("token".utf8).write(to: source.url.appendingPathComponent("Documents/login.txt"))
+    try Data("secret".utf8).write(to: source.url.appendingPathComponent("LCKeychain.plist"))
+    try Data(count: 64).write(to: source.url.appendingPathComponent("Library/Caches/blob"))
+
+    let file = home.appendingPathComponent("Main.lcbackup")
+    try library.backup(source, of: app, to: file)
+    let restored = try library.restore(file, into: app)
+    check(restored.folderName != source.folderName && app.containers.count == 2, "restore makes a new container")
+    check(restored.name == "Main (restored)" && restored.info["name"] as? String == "Main (restored)", "restored container named after the original")
+    check((try? String(contentsOf: restored.url.appendingPathComponent("Documents/login.txt"), encoding: .utf8)) == "token", "files restored")
+    check(FileManager.default.fileExists(atPath: restored.url.appendingPathComponent("LCKeychain.plist").path), "keychain restored with the container")
+    check((try? library.restore(file, into: other)) == nil && other.containers.isEmpty, "a backup of another app is refused")
+    let junk = home.appendingPathComponent("junk.zip")
+    try Shell.run("/usr/bin/ditto", ["-c", "-k", source.url.appendingPathComponent("Documents").path, junk.path])
+    check((try? library.restore(junk, into: app)) == nil && app.containers.count == 2, "a zip that is not a backup is refused")
+
+    try library.clearCaches(source)
+    check(!FileManager.default.fileExists(atPath: source.url.appendingPathComponent("Library/Caches/blob").path)
+          && FileManager.default.fileExists(atPath: source.url.appendingPathComponent("Documents/login.txt").path), "clearing caches keeps documents")
+} catch { check(false, "backup and restore threw \(error)") }
+
+// MARK: - Preference editor model
+
+do {
+    let source: [String: Any] = ["name": "Ada", "count": 3, "ratio": 0.5, "on": true, "off": false,
+                                 "when": Date(timeIntervalSince1970: 1_000), "blob": Data([1, 2]),
+                                 "list": ["a", 2], "nested": ["inner": "x"]]
+    let root = PlistNode(key: "", value: source)
+    check(NSDictionary(dictionary: root.value as! [String: Any]).isEqual(to: source), "plist tree round-trips every type")
+    let kinds = Dictionary(uniqueKeysWithValues: (root.children ?? []).map { ($0.key, $0.kind) })
+    check(kinds["on"] == .boolean && kinds["count"] == .integer && kinds["ratio"] == .real, "booleans, integers and decimals told apart")
+    let added = try XCTUnwrap(root.addChild())
+    let second = try XCTUnwrap(root.addChild())
+    check(added.key == "New Key" && second.key == "New Key 2", "new keys never collide")
+    second.remove()
+    check((root.children ?? []).count == source.count + 1, "entries removed")
+    let list = try XCTUnwrap(root.children?.first { $0.key == "list" })
+    list.children?.first?.remove()
+    check(list.children?.map(\.key) == ["Item 0"] && (list.value as? [Any])?.count == 1, "array items renumbered after removal")
+    added.string = "42"
+    added.change(to: .integer)
+    check(added.value as? Int == 42, "type change keeps a convertible value")
+    added.change(to: .boolean)
+    check(added.value as? Bool == true, "number to boolean")
+
+    // Through cfprefsd, the way the editor saves.
+    // A file written by someone else, under the /var/folders spelling cfprefsd does not find.
+    let file = FileManager.default.temporaryDirectory.appendingPathComponent("lc-prefs-test-\(UUID().uuidString).plist")
+    defer { try? FileManager.default.removeItem(at: file) }
+    check(file.path.hasPrefix("/var/") || file.path.hasPrefix("/private/"), "test file is in the temporary folder")
+    try LCPlist.write(["greeting": "old"], to: file)
+    check(try LCPreferences.read(file)["greeting"] as? String == "old", "existing preferences read under any path spelling")
+    try LCPreferences.write(["greeting": "hi", "n": 7], to: file)
+    let back = try LCPreferences.read(file)
+    check(back["greeting"] as? String == "hi" && back["n"] as? Int == 7, "preferences written and read back through defaults")
+} catch { check(false, "preference editor model threw \(error)") }
+
 func XCTUnwrap<T>(_ value: T?) throws -> T {
     guard let value else { throw LCError.message("unexpected nil") }
     return value

@@ -115,6 +115,20 @@ final class LibraryModel: ObservableObject {
         perform(app) { try library.addContainer(to: app, name: name) }
     }
 
+    /// Runs slow file work (backups) off the main thread, with the progress card showing.
+    func inBackground(_ title: String, _ work: @escaping @Sendable () throws -> String) {
+        guard !isBusy else { return }
+        activity = Activity(title: title, detail: "This can take a while for a large container…")
+        Task.detached(priority: .userInitiated) {
+            do {
+                let message = try work()
+                await self.finish(message)
+            } catch {
+                await self.finish(nil, failure: "\(error)")
+            }
+        }
+    }
+
     func perform(_ app: LCApp?, _ body: () throws -> Void) {
         do { try body() } catch { failure = app.map { "\($0.displayName): \(error)" } ?? "\(error)" }
         reload()

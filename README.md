@@ -51,6 +51,11 @@ Window size and full-height layout, a volume control for each app, arrow keys th
 camera image that stays upright. From LiveContainer: hide LiveContainer from the app, report another iOS SDK version,
 run in another language, and give each container its own identifierForVendor.
 
+### 🗂 Preferences editor and backups
+Edit an app's settings in any container with a built-in plist editor. Back up a container, logins and keychain
+included, to a file, and restore it as a new container on this Mac or another. You can also clear caches and reset
+the app's macOS permissions.
+
 ### ⌨️ Scriptable
 Everything the app does is also available from `lcmac`, the command-line tool.
 
@@ -104,6 +109,8 @@ lcmac run App --container Work      # alongside the default container
 lcmac mac App windowSize phone
 lcmac set App spoofSDKVersion 17.0
 lcmac tweak add MyTweak.dylib
+lcmac container backup App Work Work.lcbackup
+lcmac container restore App Work.lcbackup
 lcmac export App                    # put it in ~/Applications
 lcmac help
 ```

@@ -19,7 +19,11 @@ Containers (separate data, accounts and keychain per container)
   container default <app> <container>               the one opened by default
   container reset <app> <container>                 erase its data, keep it
   container remove <app> <container> [--keep-data]
+  container clear-caches <app> <container>          delete Library/Caches and tmp, keep everything else
+  container backup <app> <container> <file>         save the container (keychain included) to a file
+  container restore <app> <file>                    restore a backup as a new container
   path <app> [--container <name>]                   print the container's folder
+                                                    (edit preferences with: defaults write "$(lcmac path App)/Library/Preferences/<id>.plist" ...)
 
 Settings
   set <app> <option> <value> [--container <name>]   LiveContainer options (see `lcmac options`)
@@ -33,6 +37,7 @@ Tweaks
 Mac integration
   export <app> [--to <folder>]                      put the app in ~/Applications (Launchpad, Spotlight)
   unexport <app>                                    take it out again
+  reset-permissions <app>                           macOS asks again for camera, microphone, etc.
   inspect <binary>                                  platform, minimum OS, encryption, file type
 
 Environment: LC_HOME_PATH changes where LiveContainer keeps everything
@@ -166,7 +171,7 @@ case "containers":
     }
 
 case "container":
-    let action = positional(0, "add, rename, default, reset or remove")
+    let action = positional(0, "add, rename, default, reset, remove, clear-caches, backup or restore")
     let app = findApp(positional(1, "an app"))
     run {
         switch action {
@@ -182,6 +187,15 @@ case "container":
         case "remove":
             let keep = flag("--keep-data")
             try library.removeContainer(findContainer(app, positional(2, "a container")), from: app, keepData: keep)
+        case "clear-caches":
+            try library.clearCaches(findContainer(app, positional(2, "a container")))
+        case "backup":
+            let file = URL(fileURLWithPath: positional(3, "a backup file"))
+            try library.backup(findContainer(app, positional(2, "a container")), of: app, to: file)
+            print("Saved \(file.path)")
+        case "restore":
+            let container = try library.restore(URL(fileURLWithPath: positional(2, "a backup file")), into: app)
+            print("Restored as \(container.name) (\(container.folderName))")
         default:
             fail("unknown container action \(action)")
         }
@@ -261,6 +275,10 @@ case "export":
         let destination = try folder.map { try launchers.addToApplications(app, folder: $0) } ?? launchers.addToApplications(app)
         print("Added \(destination.path)")
     }
+
+case "reset-permissions":
+    let app = findApp(positional(0, "an app"))
+    run { try launchers.resetPermissions(app); print("macOS will ask \(app.displayName) for permissions again") }
 
 case "unexport":
     run { try launchers.removeFromApplications(findApp(positional(0, "an app"))) }

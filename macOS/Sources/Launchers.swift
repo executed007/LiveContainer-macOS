@@ -224,6 +224,11 @@ struct Launchers {
         return NSRunningApplication(processIdentifier: pid)
     }
 
+    /// Forgets the app's camera, microphone and other answers, so macOS asks again.
+    func resetPermissions(_ app: LCApp) throws {
+        try Shell.run("/usr/bin/tccutil", ["reset", "All", bundleIdentifier(for: app)])
+    }
+
     func activate(_ container: LCContainer) {
         process(for: container)?.activate()
     }

@@ -55,17 +55,17 @@ codesign --force --sign - "$OUT/CydiaSubstrate.framework" 2>/dev/null
 for f in LiveContainerMac.dylib TweakLoader.dylib LCLauncher; do codesign --force --sign - "$OUT/$f" 2>/dev/null; done
 [ "${1:-}" = runtime ] && exit 0
 
+SWIFT_SOURCES="macOS/Sources/MachO.swift macOS/Sources/LiveContainerPatch.swift macOS/Sources/Library.swift
+  macOS/Sources/Installer.swift macOS/Sources/Launchers.swift macOS/Sources/MacIcon.swift macOS/Sources/Preferences.swift"
+
 echo "== Unit tests"
-swiftc -O -target "$MACOS" macOS/Sources/MachO.swift macOS/Sources/LiveContainerPatch.swift macOS/Sources/Library.swift \
-    macOS/Tests/main.swift -o "$OUT/unit-tests"
+# shellcheck disable=SC2086
+swiftc -O -target "$MACOS" $SWIFT_SOURCES macOS/Tests/main.swift -o "$OUT/unit-tests"
 "$OUT/unit-tests"
 # shellcheck disable=SC2086
 xcrun clang $CFLAGS -framework Security macOS/Runtime/LCMacKeychain.m litehook/src/litehook.c \
     macOS/Tests/keychain-test.m -o "$OUT/keychain-tests"
 "$OUT/keychain-tests"
-
-SWIFT_SOURCES="macOS/Sources/MachO.swift macOS/Sources/LiveContainerPatch.swift macOS/Sources/Library.swift
-  macOS/Sources/Installer.swift macOS/Sources/Launchers.swift macOS/Sources/MacIcon.swift"
 
 echo "== lcmac (command-line tool)"
 # shellcheck disable=SC2086

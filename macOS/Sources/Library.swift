@@ -291,6 +291,61 @@ struct LCLibrary {
         container.info = info
     }
 
+    /// Deletes what the app keeps only as a cache (Library/Caches and tmp); logins and files stay.
+    func clearCaches(_ container: LCContainer) throws {
+        guard !container.isRunning else { throw LCError.running(container.name) }
+        for folder in ["Library/Caches", "tmp"] {
+            let url = container.url.appendingPathComponent(folder)
+            for item in (try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)) ?? [] {
+                try FileManager.default.removeItem(at: item)
+            }
+        }
+    }
+
+    static let backupManifest = "LiveContainerBackup.plist"
+
+    /// Saves a container to a zip file: its data (keychain included) and a manifest naming the app.
+    func backup(_ container: LCContainer, of app: LCApp, to file: URL) throws {
+        // An open container has databases mid-write; a copy of them can be unusable.
+        guard !container.isRunning else { throw LCError.running(app.displayName) }
+        let staging = FileManager.default.temporaryDirectory.appendingPathComponent("lc-backup-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: staging) }
+        try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+        try LCPlist.write(["bundleIdentifier": app.bundleIdentifier, "appName": app.displayName, "appVersion": app.version,
+                           "containerName": container.name, "date": Date()],
+                          to: staging.appendingPathComponent(LCLibrary.backupManifest))
+        try Shell.run("/bin/cp", ["-cR", container.url.path, staging.appendingPathComponent("Data").path])
+        try? FileManager.default.removeItem(at: staging.appendingPathComponent("Data/LCContainer.lock"))
+        if FileManager.default.fileExists(atPath: file.path) { try FileManager.default.removeItem(at: file) }
+        try Shell.run("/usr/bin/ditto", ["-c", "-k", "--sequesterRsrc", staging.path, file.path])
+    }
+
+    /// Restores a backup as a new container of the app; existing containers are never touched.
+    @discardableResult
+    func restore(_ file: URL, into app: LCApp) throws -> LCContainer {
+        let staging = FileManager.default.temporaryDirectory.appendingPathComponent("lc-restore-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: staging) }
+        try Shell.run("/usr/bin/ditto", ["-x", "-k", file.path, staging.path])
+        let manifest = LCPlist.read(staging.appendingPathComponent(LCLibrary.backupManifest))
+        let data = staging.appendingPathComponent("Data")
+        guard let identifier = manifest["bundleIdentifier"] as? String,
+              FileManager.default.fileExists(atPath: data.path) else {
+            throw LCError.message("\(file.lastPathComponent) is not a LiveContainer backup")
+        }
+        guard identifier == app.bundleIdentifier else {
+            throw LCError.message("This backup is of \(manifest["appName"] as? String ?? identifier), not \(app.displayName)")
+        }
+        let name = "\(manifest["containerName"] as? String ?? "Backup") (restored)"
+        let container = try addContainer(to: app, name: name)
+        try FileManager.default.removeItem(at: container.url)
+        try FileManager.default.moveItem(at: data, to: container.url)
+        try LCLibrary.makeContainerFolders(container.url)
+        var info = container.info
+        info["name"] = name
+        container.info = info
+        return container
+    }
+
     static func makeContainerFolders(_ url: URL) throws {
         // iOS LiveContainer makes tmp a symlink; a Mac container needs a real folder.
         let tmp = url.appendingPathComponent("tmp")

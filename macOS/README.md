@@ -46,6 +46,10 @@ lcmac mac TikTok windowSize phone
 lcmac tweak add MyTweak.dylib --folder TikTokTweaks
 lcmac set TikTok tweakFolder TikTokTweaks
 lcmac export TikTok                    # put it in ~/Applications
+lcmac container backup TikTok Work ~/Desktop/Work.lcbackup   # keychain included
+lcmac container restore TikTok ~/Desktop/Work.lcbackup        # always a new container
+lcmac container clear-caches TikTok Work
+lcmac reset-permissions TikTok
 lcmac uninstall TikTok                 # data kept unless --delete-data
 lcmac help
 ```
@@ -103,11 +107,25 @@ All guarded by `TARGET_OS_MACCATALYST` unless noted; `git diff upstream/main -- 
   - On Mac, `appGroupID` is fixed, so it never probes or creates `~/Library/Group Containers`.
 - `NSFileManager+GuestHooks.m`, `FoundationPrivate.h`, `LCMachOUtils.h`, `TweakLoader.m`: Mac framework paths, guards and header conflicts.
 
+### Preferences editor
+
+The editor (`App/PlistEditor.swift`, `Sources/Preferences.swift`) works on the `.plist` files in a container's
+`Library/Preferences`. It reads them with `defaults export` and saves them with `defaults import`, both of which go
+through `cfprefsd`. Writing the file directly does not work: `cfprefsd` keeps its own copy, hands that to the app,
+and later writes it back over the edit. The paths given to `defaults` are resolved first, because `cfprefsd` does
+not find a file spelled `/var/folders/…`, only `/private/var/folders/…`.
+
+### Backups
+
+A `.lcbackup` file is a zip of the container's folder, keychain included, plus `LiveContainerBackup.plist`
+naming the app. A backup is only restored into the same app, and always as a new container. Running containers
+are not backed up, because their databases may be mid-write.
+
 ## Tests
 
 ```bash
 macOS/build.sh       # unit tests: Mach-O conversion, the LiveContainer patch, the library model, the keychain store
-macOS/test-live.sh   # 34 end-to-end checks on a real UIKit app, in a temporary library
+macOS/test-live.sh   # 40 end-to-end checks on a real UIKit app, in a temporary library
 ```
 
 `test-live.sh` installs an iOS fixture and checks what the app sees from inside its container:

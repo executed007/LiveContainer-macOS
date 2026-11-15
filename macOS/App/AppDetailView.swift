@@ -132,6 +132,9 @@ struct AppDetailView: View {
             HStack {
                 Label("Containers", systemImage: "square.stack.3d.up").font(.headline)
                 Spacer()
+                Button { restoreBackup() } label: { Label("Restore Backup…", systemImage: "clock.arrow.circlepath") }
+                    .buttonStyle(.borderless)
+                    .help("Restore a .lcbackup file as a new container")
                 Button { containerName = ""; addingContainer = true } label: { Label("Add Container", systemImage: "plus") }
                     .buttonStyle(.borderless)
             }
@@ -214,6 +217,13 @@ struct AppDetailView: View {
             LabeledContent("Launcher") {
                 Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.launchers.url(for: app)]) }
             }
+            RowDivider()
+            LabeledContent("Camera, microphone…") {
+                Button("Reset Permissions") {
+                    model.perform(app) { try model.launchers.resetPermissions(app); model.notice = "macOS will ask \(app.displayName) again" }
+                }
+                .help("Forget the answers given to macOS permission prompts for this app")
+            }
         }
     }
 
@@ -223,6 +233,17 @@ struct AppDetailView: View {
                 .help("Moves the app to the Trash and keeps its containers")
             Button("Uninstall and Delete Data…", role: .destructive) { confirmingDelete = true }
             Spacer()
+        }
+    }
+
+    private func restoreBackup() {
+        let panel = NSOpenPanel()
+        panel.title = "Restore a Backup of \(app.displayName)"
+        panel.allowedContentTypes = [.init(filenameExtension: "lcbackup")].compactMap { $0 }
+        guard panel.runModal() == .OK, let file = panel.url else { return }
+        let library = model.library, app = app
+        model.inBackground("Restoring \(file.deletingPathExtension().lastPathComponent)") {
+            "Restored as \(try library.restore(file, into: app).name)"
         }
     }
 
@@ -264,10 +285,25 @@ struct ContainerCard: View {
     @State private var newName = ""
     @State private var confirmingReset = false
     @State private var confirmingRemove = false
+    @State private var editingPreferences = false
     @State private var size = "…"
 
     var isDefault: Bool { container.folderName == app.defaultContainer?.folderName }
     var isRunning: Bool { model.running.contains(container.folderName) }
+
+    private func backUp() {
+        let panel = NSSavePanel()
+        panel.title = "Back Up \(container.name)"
+        panel.message = "The backup includes the app's logins and keychain: keep it somewhere safe."
+        panel.nameFieldStringValue = "\(app.displayName) - \(container.name).lcbackup"
+        panel.allowedContentTypes = [.init(filenameExtension: "lcbackup")].compactMap { $0 }
+        guard panel.runModal() == .OK, let file = panel.url else { return }
+        let library = model.library, app = app, container = container
+        model.inBackground("Backing up \(container.name)") {
+            try library.backup(container, of: app, to: file)
+            return "Backed up \(container.name)"
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -288,6 +324,8 @@ struct ContainerCard: View {
                 } else {
                     Button { model.run(app, container: container) } label: { Label("Open", systemImage: "play.fill") }
                 }
+                Button { editingPreferences = true } label: { Label("Preferences", systemImage: "slider.horizontal.3") }
+                    .help("View and edit the app's settings in this container")
                 Spacer()
                 Menu {
                     if !isDefault { Button("Open by Default") { model.perform(app) { model.library.setDefaultContainer(container, of: app) } } }
@@ -297,6 +335,10 @@ struct ContainerCard: View {
                         get: { container.info["spoofIdentifierForVendor"] as? Bool ?? false },
                         set: { value in model.perform(app) { try model.library.setOption(.spoofIdentifierForVendor, value ? "on" : "off", app: app, container: container) } }))
                     Divider()
+                    Button("Back Up…") { backUp() }.disabled(isRunning)
+                    Button("Clear Caches") {
+                        model.perform(app) { try model.library.clearCaches(container); model.notice = "Cleared caches of \(container.name)" }
+                    }.disabled(isRunning)
                     Button("Erase Data…") { confirmingReset = true }.disabled(isRunning)
                     Button("Remove Container…", role: .destructive) { confirmingRemove = true }.disabled(isRunning || app.containers.count < 2)
                 } label: { Image(systemName: "ellipsis.circle") }
@@ -313,6 +355,7 @@ struct ContainerCard: View {
             let bytes = await Task.detached { LCLibrary.size(of: url) }.value
             size = formattedSize(bytes)
         }
+        .sheet(isPresented: $editingPreferences) { PlistEditorSheet(app: app, container: container) }
         .alert("Rename Container", isPresented: $renaming) {
             TextField("Name", text: $newName)
             Button("Rename") { model.perform(app) { model.library.renameContainer(container, of: app, to: newName) } }

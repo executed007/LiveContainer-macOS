@@ -133,6 +133,26 @@ check "updating keeps preferences" equals "$(probe "$DEFAULT" defaultsLaunches)"
 check "updating keeps the keychain" equals "$(probe "$DEFAULT" keychainLaunches)" 4
 check "updating keeps both containers" equals "$("$LCMAC" containers Fixture | wc -l | tr -d ' ')" 2
 
+echo "== Preferences"
+# Through cfprefsd, as the app's editor saves (writing the file directly gets overwritten).
+# pwd -P: cfprefsd does not find files spelled /var/folders/... (mktemp's), only /private/var/...
+PREFS="$(cd "$("$LCMAC" path Fixture)/Library/Preferences" && pwd -P)/dev.livecontainer.fixture.plist"
+defaults write "$PREFS" launches -int 50
+"$LCMAC" run Fixture --env LC_FIXTURE_QUIT=1 --wait
+check "an edited preference reaches the app" equals "$(probe "$DEFAULT" defaultsLaunches)" 51
+
+echo "== Backup and restore"
+"$LCMAC" container backup Fixture Default "$WORK/Default.lcbackup" >/dev/null
+check "backup file written" test -s "$WORK/Default.lcbackup"
+"$LCMAC" container restore Fixture "$WORK/Default.lcbackup" >/dev/null
+RESTORED="$("$LCMAC" containers Fixture | awk '/restored/ {print $3}')"
+check "restored as a new container" test -n "$RESTORED"
+"$LCMAC" run Fixture --container "$RESTORED" --env LC_FIXTURE_QUIT=1 --wait
+check "restored preferences carry on" equals "$(probe "$RESTORED" defaultsLaunches)" 52
+check "restored keychain carries on" equals "$(probe "$RESTORED" keychainLaunches)" 6
+"$LCMAC" container clear-caches Fixture Default
+check "clearing caches keeps the data" equals "$(defaults read "$PREFS" launches)" 51
+
 echo "== Tweaks"
 xcrun clang -dynamiclib -fobjc-arc -target arm64-apple-ios15.0-macabi -isysroot "$SDK" -DTWEAK_NAME='"imported"' \
     -framework Foundation macOS/Tests/Fixture/Tweak.m -o "$WORK/Imported.catalyst"
